@@ -1,13 +1,14 @@
 const Post = require('../models/post');
 const User = require('../models/user');
 
-// Get all posts of users
+// Get all posts
 exports.getAllPosts = async (req, res) => {
     try {
         const posts = await Post.find().populate('user_id', 'name mobile_number');
-        res.json(posts);
+        return res.status(200).json({ message: posts });
+
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        return res.status(500).json({ message: 'Failed to fetch posts', error: error.message });
     }
 };
 
@@ -16,6 +17,16 @@ exports.createPost = async (req, res) => {
     const { title, description, user_id, images } = req.body;
 
     try {
+        if (!title || !description || !images || !user_id) {
+            return res.status(404).json({ message: 'All fields are required' });
+        }
+        // Validate that the user exists
+        const user = await User.findById(user_id);
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        // Create the new post
         const post = new Post({
             title,
             description,
@@ -26,13 +37,12 @@ exports.createPost = async (req, res) => {
         await post.save();
 
         // Update the post count for the user
-        const user = await User.findById(user_id);
         user.post_count += 1;
         await user.save();
 
-        res.status(201).json(post);
+        return res.status(201).json({ message: 'Post created successfully' });
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        return res.status(500).json({ message: 'Failed to create post', error: error.message });
     }
 };
 
@@ -51,9 +61,9 @@ exports.editPost = async (req, res) => {
         post.images = images || post.images;
 
         await post.save();
-        res.json(post);
+        return res.status(200).json({ message: 'Post updated successfully' })
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        return res.status(500).json({ message: error.message });
     }
 };
 
